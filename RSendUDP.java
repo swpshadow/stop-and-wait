@@ -1,12 +1,12 @@
-package Proj2;
 
 import java.net.InetSocketAddress;
 import java.net.DatagramPacket;
 import edu.utulsa.unet.UDPSocket;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.util.Arrays;
 
 public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
 
@@ -20,11 +20,12 @@ public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
 
   public RSendUDP(){
     try{
-      sender = InetAddress.getLocalHost();
+      sender = InetAddress.getByName("localhost");
     }
     catch(UnknownHostException e)
     {
       System.out.printf("error: %s", e);
+      e.printStackTrace();
       System.exit(1);
     }
   }
@@ -100,14 +101,77 @@ public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
     return receiver;
   }
   public boolean sendFile(){
+	
     try{
+      long t = System.currentTimeMillis();
       File f = new File(fname);
       System.out.printf("Sending %s from %s:%d to %s with %d bytes\n", fname, sender.getHostAddress(), port, receiver.toString(),  fname.length());
       if(mode == 0){
+    	  //header: msg num, total length,  
         System.out.println("using stop-and-wait");
+        
+        byte msg[] = Files.readAllBytes(f.toPath());
+        UDPSocket sock = new UDPSocket(port);
+        sock.setSoTimeout((int) timeout);
+        byte count = 0;
+	    int buffSize = sock.getSendBufferSize();
+	    for( int i = 0; i <= msg.length/buffSize; i ++)
+	    {
+	    	int idx = (i+1)*(buffSize - 6);
+	    	if (idx >= msg.length) {
+	    		idx = msg.length - 1;
+	    	}
+	    	count += 1;
+		    byte pack[] = makePacket(Arrays.copyOfRange(msg, i*(buffSize - 6), idx ), count, (byte) (msg.length/buffSize + 1));
+		    int attempts = 0;
+		    boolean notReceived = true;
+		    while( attempts <= 5 && notReceived )
+		    {
+		    	attempts += 1;
+			    try {
+			    	sock.send(new DatagramPacket(pack, pack.length, receiver));
+			    	System.out.printf("Message %d sent with %d bytes of actual data\n", 
+			    			count, idx - i*(buffSize - 6));
+			    	byte[] buf = new byte[1];
+			    	DatagramPacket p = new DatagramPacket(buf, buf.length);
+			    	sock.receive(p);
+			    	
+			    	if ((int) (p.getData()[0]) == count)
+			    	{
+			    		notReceived = false;
+				    	System.out.printf("message %d acknowledged\n", p.getData()[0]);
+			    	}
+			    	else
+			    	{
+			    		System.out.printf("no ACK received\n");
+			    	}
+			    	
+			    }
+			    catch(Exception e)
+			    {
+//			    	if ((byte)count == (byte) (msg.length/buffSize + 1)) {
+//			    		System.out.printf("message %d acknowledged\n", count);
+//			    		break;
+//			    	}
+			    	System.out.println("timeout has occured");
+			    	if (attempts < 5) {
+			    		System.out.printf("attempting to resend message %d\nThis is the %d attempt\n", count, attempts);
+			    	}
+			    }
+		    }
+		    if (attempts >= 5)
+		    {
+		    	System.out.printf("Could not send file after %d attempts\n", attempts);
+		    	return false;
+		    }
+	    }
+	    System.out.printf("Successfully transferred %s (%d bytes) in %.2f seconds\n", 
+	    		fname, msg.length - 1,(System.currentTimeMillis() - t)/1000.0 );
       }
       else{
         System.out.println("using sliding window");
+        System.out.println("This has not been implemented");
+        return false;
       }
     }
     // catch(FileNotFoundException e){
@@ -116,8 +180,32 @@ public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
     // }
     catch(Exception e){
       System.out.printf("there was an error: %s", e);
-      System.exit(1);
+      e.printStackTrace();
+      return false;
     }
     return true;
+  }
+  private byte[] makePacket(byte[] msg, byte msgNum, byte numMsgs)
+  {
+	  //msg num in 1 bytes
+	  //num msgs total in 1 bytes
+	  //length in 2 bytes
+	  //port num in 2 bytes
+	  byte message [] = new byte[msg.length + 6];
+	  int count = 6;
+	  for(byte b : msg) {
+		  message[count++] = b;
+	  }
+	  message[0] = msgNum;
+	  message[1] = numMsgs;
+	  byte b1 = (byte) (msg.length >> 8);
+	  byte b2 = (byte) msg.length;
+	  message[2] = b1;
+	  message[3] = b2;
+	  b1 = (byte) ((port >> 8) & 0xff);
+	  b2 = (byte) (port& 0xff);
+	  message[4] = b1;
+	  message[5] = b2;
+	  return message;
   }
 }
