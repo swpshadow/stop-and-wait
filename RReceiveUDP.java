@@ -112,6 +112,7 @@ public class RReceiveUDP implements edu.utulsa.unet.RReceiveUDPI{
 					  break;
 				  }
 			  }
+			  System.out.println();
 			  try (FileOutputStream f = new FileOutputStream(fname)) 
 			  {
 				   f.write(data);

@@ -115,14 +115,14 @@ public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
         sock.setSoTimeout((int) timeout);
         byte count = 0;
 	    int buffSize = sock.getSendBufferSize();
-	    for( int i = 0; i <= msg.length/buffSize; i ++)
+	    for( int i = 0; i <= msg.length/(buffSize - 6) + 1; i ++)
 	    {
 	    	int idx = (i+1)*(buffSize - 6);
 	    	if (idx >= msg.length) {
-	    		idx = msg.length - 1;
+	    		idx = msg.length;
 	    	}
 	    	count += 1;
-		    byte pack[] = makePacket(Arrays.copyOfRange(msg, i*(buffSize - 6), idx ), count, (byte) (msg.length/buffSize + 1));
+		    byte pack[] = makePacket(Arrays.copyOfRange(msg, i*(buffSize - 6), idx ), count, (byte) (msg.length/(buffSize - 6) + 1));
 		    int attempts = 0;
 		    boolean notReceived = true;
 		    while( attempts <= 5 && notReceived )
@@ -166,7 +166,7 @@ public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
 		    }
 	    }
 	    System.out.printf("Successfully transferred %s (%d bytes) in %.2f seconds\n", 
-	    		fname, msg.length - 1,(System.currentTimeMillis() - t)/1000.0 );
+	    		fname, msg.length,(System.currentTimeMillis() - t)/1000.0 );
       }
       else{
         System.out.println("using sliding window");
