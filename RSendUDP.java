@@ -115,7 +115,7 @@ public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
         sock.setSoTimeout((int) timeout);
         byte count = 0;
 	    int buffSize = sock.getSendBufferSize();
-	    for( int i = 0; i <= msg.length/(buffSize - 6) + 1; i ++)
+	    for( int i = 0; i < msg.length/(buffSize - 6) + 1; i ++)
 	    {
 	    	int idx = (i+1)*(buffSize - 6);
 	    	if (idx >= msg.length) {
@@ -125,7 +125,7 @@ public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
 		    byte pack[] = makePacket(Arrays.copyOfRange(msg, i*(buffSize - 6), idx ), count, (byte) (msg.length/(buffSize - 6) + 1));
 		    int attempts = 0;
 		    boolean notReceived = true;
-		    while( attempts <= 5 && notReceived )
+		    while( attempts <= 6 && notReceived )
 		    {
 		    	attempts += 1;
 			    try {
@@ -149,12 +149,8 @@ public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
 			    }
 			    catch(Exception e)
 			    {
-//			    	if ((byte)count == (byte) (msg.length/buffSize + 1)) {
-//			    		System.out.printf("message %d acknowledged\n", count);
-//			    		break;
-//			    	}
 			    	System.out.println("timeout has occured");
-			    	if (attempts < 5) {
+			    	if (attempts < 6) {
 			    		System.out.printf("attempting to resend message %d\nThis is the %d attempt\n", count, attempts);
 			    	}
 			    }
@@ -174,10 +170,6 @@ public class RSendUDP implements edu.utulsa.unet.RSendUDPI {
         return false;
       }
     }
-    // catch(FileNotFoundException e){
-    //   System.out.printf("the file %s could not be found: ", fname, e);
-    //   System.exit(1);
-    // }
     catch(Exception e){
       System.out.printf("there was an error: %s", e);
       e.printStackTrace();
