@@ -1,6 +1,5 @@
 /RReceiveUDP.class
 /RSendUDP.class
-/udpreceiver.class
-/udpsender.class
 /senderDriver.class
 /recDriver.class
+*.txt
